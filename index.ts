@@ -2,7 +2,7 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { Plugin, PluginMeta } from '@posthog/plugin-scaffold'
 import fetch from 'node-fetch'
 
-export interface ReplicatorMeta extends PluginMeta {
+type ReplicatorPlugin = Plugin<{
     global: {
         buffer: ReturnType<typeof createBuffer>
     }
@@ -11,9 +11,9 @@ export interface ReplicatorMeta extends PluginMeta {
         project_api_key: string
         replication: string
     }
-}
+}>
 
-const plugin: Plugin<ReplicatorMeta> = {
+const plugin: ReplicatorPlugin = {
     setupPlugin: ({ global, config }) => {
         global.buffer = createBuffer({
             limit: 1024 * 1024, // 1 MB
@@ -33,7 +33,12 @@ const plugin: Plugin<ReplicatorMeta> = {
         global.buffer.flush()
     },
 
-    processEvent: async (event, { config, global }) => {
+    onEvent: async (event, { config, global }) => {
+        // prevent infinite loop of event ingestion
+        if (event.properties?.token === config.project_api_key) {
+            return
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { team_id, now, offset, ...sendableEvent } = { ...event, token: config.project_api_key }
         const sendableEventSize = JSON.stringify(sendableEvent).length
@@ -41,7 +46,6 @@ const plugin: Plugin<ReplicatorMeta> = {
         for (let i = 0; i < replication; i++) {
             global.buffer.add(sendableEvent, sendableEventSize)
         }
-        return event
     },
 }
 
