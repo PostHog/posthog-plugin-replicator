@@ -39,34 +39,36 @@ const reverseAutocaptureEvent = (autocaptureEvent: StrippedEvent) => {
 }
 
 const plugin: Plugin<ReplicatorMetaInput> = {
-    exportEvents: async (events, { config }) => {
+    onEvent: async (event, { config }) => {
+        const replication = parseInt(config.replication) || 1
+        if (replication > 1) {
+            // This is a quick fix to make sure we don't become a spam bot
+            throw Error('Replication factor > 1 is not allowed')
+        }
+
         const eventsToIgnore = new Set(
             config.events_to_ignore && config.events_to_ignore.trim() !== ''
                 ? config.events_to_ignore.split(',').map((event) => event.trim())
                 : null
         )
+        if (eventsToIgnore.has(event.event)) {
+            return
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { team_id, ip, person: _, ...sendableEvent } = { ...event, token: config.project_api_key }
+
+        if (ip) {
+            // Set IP address (originally obtained from capture request headers) in properties
+            sendableEvent.properties.$ip = ip
+        }
+
+        const finalSendableEvent =
+            sendableEvent.event === '$autocapture' ? reverseAutocaptureEvent(sendableEvent) : sendableEvent
+
         const batch = []
-        for (const event of events) {
-            // skip if event has to be ignored
-            if (eventsToIgnore.has(event.event)) {
-                continue
-            }
-
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { team_id, ip, person: _, ...sendableEvent } = { ...event, token: config.project_api_key }
-
-            if (ip) {
-                // Set IP address (originally obtained from capture request headers) in properties
-                sendableEvent.properties.$ip = ip
-            }
-
-            const finalSendableEvent =
-                sendableEvent.event === '$autocapture' ? reverseAutocaptureEvent(sendableEvent) : sendableEvent
-
-            const replication = parseInt(config.replication) || 1
-            for (let i = 0; i < replication; i++) {
-                batch.push(finalSendableEvent)
-            }
+        for (let i = 0; i < replication; i++) {
+            batch.push(finalSendableEvent)
         }
 
         if (batch.length > 0) {
