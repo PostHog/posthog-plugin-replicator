@@ -51,24 +51,12 @@ describe('payload contents', () => {
             })
         }
 
-        it('should handle a batch of events', async () => {
+        it('should handle a single event', async () => {
             const req = acceptAndCaptureRequest()
-            await plugin.exportEvents([mockEvent, mockEvent, mockEvent], { config })
+            await plugin.onEvent(mockEvent, { config })
             const body = await req.then((res) => res.json())
 
             expect(body).toEqual([
-                {
-                    distinct_id: '1234',
-                    event: 'my-event',
-                    properties: { foo: 'bar', $ip: '127.0.0.1' },
-                    token: 'test',
-                },
-                {
-                    distinct_id: '1234',
-                    event: 'my-event',
-                    properties: { foo: 'bar', $ip: '127.0.0.1' },
-                    token: 'test',
-                },
                 {
                     distinct_id: '1234',
                     event: 'my-event',
@@ -79,24 +67,20 @@ describe('payload contents', () => {
         })
 
         it('should skip ignored events', async () => {
-            const req = acceptAndCaptureRequest()
-            await plugin.exportEvents([mockEvent, ...mockEventsToIgnore, mockEvent], { config })
-            const body = await req.then((res) => res.json())
+            let requestHandled = false
 
-            expect(body).toEqual([
-                {
-                    distinct_id: '1234',
-                    event: 'my-event',
-                    properties: { foo: 'bar', $ip: '127.0.0.1' },
-                    token: 'test',
-                },
-                {
-                    distinct_id: '1234',
-                    event: 'my-event',
-                    properties: { foo: 'bar', $ip: '127.0.0.1' },
-                    token: 'test',
-                },
-            ])
+            mswServer.use(
+                rest.post(captureUrl, (_req, res, ctx) => {
+                    requestHandled = true
+                    return res.once(ctx.json({ status: 1 }))
+                })
+            )
+            for (const event of mockEventsToIgnore) {
+                await plugin.onEvent(event, { config })
+            }
+            expect(requestHandled).toBe(false)
+            await plugin.onEvent(mockEvent, { config })
+            expect(requestHandled).toBe(true)
         })
 
         it('should reuse the values for timestamp, event, uuid', async () => {
@@ -107,8 +91,8 @@ describe('payload contents', () => {
             // https://github.com/PostHog/posthog/blob/771691e8bdd6bf4465887b88d0a6019c9b4b91d6/plugin-server/functional_tests/exports-v2.test.ts#L151
 
             const req = acceptAndCaptureRequest()
-            await plugin.exportEvents(
-                [{ distinct_id: '1234', event: 'my-event', sent_at: 'asdf', uuid: 'asdf-zxcv' }],
+            await plugin.onEvent(
+                { distinct_id: '1234', event: 'my-event', sent_at: 'asdf', uuid: 'asdf-zxcv' },
                 { config }
             )
             const body = await req.then((res) => res.json())
@@ -126,7 +110,7 @@ describe('payload contents', () => {
 
         it('should correctly reverse the autocapture format', async () => {
             const req = acceptAndCaptureRequest()
-            await plugin.exportEvents([mockAutocaptureEvent], { config })
+            await plugin.onEvent(mockAutocaptureEvent, { config })
             const body = await req.then((res) => res.json())
             expect(body).toEqual([
                 {
@@ -309,8 +293,8 @@ describe('payload contents', () => {
                     return res(ctx.status(200))
                 })
             )
-            await plugin.exportEvents([mockEvent, mockEvent], { config })
-            expect(logSpy).toHaveBeenCalledWith('Flushed 2 events to localhost:8000')
+            await plugin.onEvent(mockEvent, { config })
+            expect(logSpy).toHaveBeenCalledWith('Flushed 1 event to localhost:8000')
             logSpy.mockReset()
         })
 
@@ -321,8 +305,8 @@ describe('payload contents', () => {
                     return res(ctx.status(400))
                 })
             )
-            await plugin.exportEvents([mockEvent, mockEvent], { config })
-            expect(logSpy).toHaveBeenCalledWith('Skipping 2 events, rejected by localhost:8000: 400 Bad Request')
+            await plugin.onEvent(mockEvent, { config })
+            expect(logSpy).toHaveBeenCalledWith('Skipping 1 event, rejected by localhost:8000: 400 Bad Request')
             logSpy.mockReset()
         })
 
@@ -333,7 +317,7 @@ describe('payload contents', () => {
                     return res(ctx.status(500))
                 })
             )
-            await expect(plugin.exportEvents([mockEvent], { config })).rejects.toThrow(RetryError)
+            await expect(plugin.onEvent(mockEvent, { config })).rejects.toThrow(RetryError)
             expect(logSpy).toHaveBeenCalledWith(
                 'Failed to submit 1 event to localhost:8000 due to server error: 500 Internal Server Error'
             )
@@ -343,7 +327,7 @@ describe('payload contents', () => {
         it('throws RetryError on ECONNREFUSED', async () => {
             const logSpy = jest.spyOn(console, 'error')
             mswServer.close()
-            await expect(plugin.exportEvents([mockEvent], { config })).rejects.toThrow(RetryError)
+            await expect(plugin.onEvent(mockEvent, { config })).rejects.toThrow(RetryError)
             expect(logSpy).toHaveBeenCalledWith(
                 'Failed to submit 1 event to localhost:8000 due to network error',
                 expect.any(FetchError)
@@ -359,7 +343,7 @@ describe('payload contents', () => {
                 events_to_ignore: '',
             }
             const logSpy = jest.spyOn(console, 'error')
-            await expect(plugin.exportEvents([mockEvent], { config: badConfig })).rejects.toThrow(
+            await expect(plugin.onEvent(mockEvent, { config: badConfig })).rejects.toThrow(
                 TypeError('Only absolute URLs are supported')
             )
             expect(logSpy).toHaveBeenCalledTimes(1)
