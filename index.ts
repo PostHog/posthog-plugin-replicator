@@ -7,6 +7,7 @@ export interface ReplicatorMetaInput {
         project_api_key: string
         replication: string
         events_to_ignore: string
+        disable_geoip: 'Yes' | 'No'
     }
 }
 
@@ -56,11 +57,10 @@ const plugin: Plugin<ReplicatorMetaInput> = {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { team_id, ip, person: _, ...sendableEvent } = { ...event, token: config.project_api_key }
+        const { team_id, person: _, ...sendableEvent } = { ...event, token: config.project_api_key }
 
-        if (ip) {
-            // Set IP address (originally obtained from capture request headers) in properties
-            sendableEvent.properties.$ip = ip
+        if (config.disable_geoip === 'Yes') {
+            sendableEvent.properties.$geoip_disable = true
         }
 
         const finalSendableEvent =
