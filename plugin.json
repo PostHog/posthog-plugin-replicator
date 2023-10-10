@@ -33,6 +33,15 @@
             "default": "",
             "hint": "Comma-separated list of events to ignore, e.g. $pageleave, purchase",
             "required": false
+        },
+        {
+            "key": "disable_geoip",
+            "hint": "Add $disable_geoip so that the receiving PostHog instance doesn't try to resolve the IP address.",
+            "name": "Disable Geo IP?",
+            "type": "choice",
+            "choices": ["Yes", "No"],
+            "default": "No",
+            "required": false
         }
     ]
 }

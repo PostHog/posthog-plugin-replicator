@@ -1,8 +1,8 @@
 {
     "distinct_id": "12345",
-    "ip": "127.0.0.1",
     "event": "$autocapture",
     "properties": {
+        "$ip": "127.0.0.1",
         "$os": "Mac OS X",
         "$browser": "Firefox"
     },
