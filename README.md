@@ -2,6 +2,8 @@
 
 Replicate PostHog event stream in another PostHog instance. Simply: export events.
 
+Move things from here to there.
+
 ## Installation
 
 1. Access PostHog's **Plugins** page from the sidebar.
