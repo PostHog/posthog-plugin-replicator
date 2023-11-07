@@ -64,7 +64,9 @@ const plugin: Plugin<ReplicatorMetaInput> = {
         }
 
         const finalSendableEvent =
-            sendableEvent.event === '$autocapture' ? reverseAutocaptureEvent(sendableEvent) : sendableEvent
+            sendableEvent.event === '$autocapture' && !sendableEvent.properties['$elements_chain']
+                ? reverseAutocaptureEvent(sendableEvent)
+                : sendableEvent
 
         const batch = []
         for (let i = 0; i < replication; i++) {
