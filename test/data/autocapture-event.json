@@ -8,6 +8,7 @@
     },
     "timestamp": "2022-12-06T12:54:30.810Z",
     "uuid": "0184e780-8f2b-0000-9e00-4cdcba315fe9",
+    "elements_chain": "div:nth-child=\"1\"nth-of-type=\"2\"text=\"text\"",
     "elements": [
         {
             "attributes": { "attr__class": "view-line", "attr__style": "top:396px;height:18px;" },
