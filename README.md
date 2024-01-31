@@ -13,4 +13,4 @@ Replicate PostHog event stream in another PostHog instance. Simply: export event
 
 ## Questions?
 
-### [Join our Slack community.](https://posthog.com/slack)
+### [Join our community.](https://posthog.com/questions)
