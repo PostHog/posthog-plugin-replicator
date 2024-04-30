@@ -1,3 +1,5 @@
+This app is deprecated an no longer available on PostHog Cloud.
+
 # PostHog Plugin: Replicator
 
 Replicate PostHog event stream in another PostHog instance. Simply: export events.
